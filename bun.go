@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"os"
 	"time"
 )
 
@@ -15,7 +16,7 @@ type Bun struct {
 }
 
 func NewBun(expireTime int64) *Bun {
-	bun := &Bun{expireTime: expireTime}
+	bun := &Bun{expireTime: expireTime, Logger: *log.New(os.Stderr, "[#APBUN]", log.Lshortfile|log.LstdFlags)}
 	return bun
 }
 func (b *Bun) AppendCommands(cs ...Command) { b.commands = append(b.commands, cs...) }
@@ -51,11 +52,11 @@ func (b *Bun) Undo() error {
 		errc := GoWithError(func() error { return b.undons[j].Undo() })
 		select {
 		case <-ctx.Done():
-			// print error
+			b.Println(ctx.Err().Error())
 			return nil
 		case err := <-errc:
 			if err != nil {
-				// print error
+				b.Println(err.Error())
 			}
 		}
 	}
@@ -84,3 +85,7 @@ type Command interface {
 type Undo interface {
 	Undo() error
 }
+
+type NoUndo struct{}
+
+func (NoUndo) Undo() error { return nil }
